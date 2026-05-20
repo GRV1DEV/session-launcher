@@ -272,25 +272,18 @@ async function restoreSession(session) {
     // ── Build window creation options ───────────────────────────────────────
     const createOpts = {
       url:     tabs[0].url,
-      // The first tab's URL. undefined → new tab page.
-      // chrome.windows.create requires at least a url (or nothing for new tab page).
-
       focused: false,
-      // Don't steal focus from the popup or the user's current window as we
-      // create restored windows in the background. The user can click in when ready.
+      // Always pass position and size regardless of saved state.
+      // For maximized/fullscreen windows, left/top tell Chrome which monitor
+      // to place the window on before we apply the saved state. Without them,
+      // Chrome defaults every window to the primary display.
+      // left/top can be negative on multi-monitor setups (secondary monitor to
+      // the left or above the primary) — Chrome handles negative coords correctly.
+      left:    win.left,
+      top:     win.top,
+      width:   win.width,
+      height:  win.height,
     };
-
-    if (win.state === "normal") {
-      // Only restore pixel position and size for normal (non-maximized) windows.
-      // For maximized/fullscreen windows, left/top/width/height are meaningless
-      // and passing them can confuse the window manager on some OS.
-      createOpts.left   = win.left;
-      createOpts.top    = win.top;
-      // left and top can be NEGATIVE on multi-monitor setups where a secondary
-      // monitor sits to the left of or above the primary. Chrome handles this correctly.
-      createOpts.width  = win.width;
-      createOpts.height = win.height;
-    }
 
     // ── Create the window with its first tab ───────────────────────────────
     const newWin = await chrome.windows.create(createOpts);
