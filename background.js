@@ -60,6 +60,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // when the extension has many different message types in later phases.
   // Think of it like an HTTP method+path: "what action are you requesting?"
 
+  if (message.type === "RESTORE_SESSION") {
+    // ── Why we use an async IIFE here ────────────────────────────────────────
+    // restoreSession() is an async function — it needs to await multiple Chrome
+    // API calls in sequence (create window, then create each tab, then update
+    // window state). We can't make the onMessage listener itself async because
+    // that would return a Promise instead of the literal "true" Chrome needs
+    // to keep the message channel open (same constraint as GET_DISPLAY_INFO).
+    //
+    // The solution: an IIFE (Immediately Invoked Function Expression).
+    //   (async () => { ... })()
+    //   ^^^^^^^^^^^^^^^^^^^^^^^^^
+    //   This creates an async arrow function and calls it immediately.
+    //   The IIFE runs asynchronously in the background.
+    //   The outer listener function reaches "return true" synchronously,
+    //   satisfying Chrome's channel-keep-open check.
+    //   When the IIFE eventually calls sendResponse, the channel is still open.
+    (async () => {
+      try {
+        await restoreSession(message.session);
+        // message.session is the full session object sent from popup.js.
+        // restoreSession() iterates over session.windows and recreates each
+        // window with its tabs, position, size, and state.
+
+        sendResponse({ ok: true });
+        // Tell popup.js the restore completed successfully.
+        // popup.js shows "Launched!" feedback on receiving { ok: true }.
+
+      } catch (err) {
+        sendResponse({ error: err.message });
+        // If restoreSession() throws (e.g. a Chrome API call rejects),
+        // forward the error message to popup.js for display.
+        console.error("RESTORE_SESSION failed:", err);
+      }
+    })();
+    // The IIFE starts here. The outer function continues synchronously below.
+
+    return true;
+    // Synchronous return true — keeps the channel open while the IIFE runs.
+  }
+
   if (message.type === "CAPTURE_SESSION") {
     // ── Why we handle both queries here, not just the display one ────────────
     // chrome.system.display is unavailable in popup context (Phase 2 lesson).
@@ -152,6 +192,153 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // which tells Chrome this listener doesn't handle that message type.
 });
 // End of onMessage listener.
+
+// ── isRestorable ──────────────────────────────────────────────────────────────
+// Returns true if a URL can be opened by a Chrome extension via chrome.tabs.create
+// or chrome.windows.create. Extensions cannot navigate to internal Chrome URLs,
+// browser-generated pages, or script pseudo-protocols.
+function isRestorable(url) {
+  if (!url) return false;
+  // An empty or undefined URL is not restorable — nothing to navigate to.
+
+  if (url.startsWith("chrome://"))            return false;
+  // chrome:// is Chrome's internal URL scheme: settings, flags, extensions, newtab, etc.
+  // Extensions can't open these (except Chrome opens newtab automatically when url
+  // is undefined in tabs.create — that's our fallback).
+
+  if (url.startsWith("chrome-extension://"))  return false;
+  // chrome-extension:// URLs belong to specific installed extensions.
+  // Opening another extension's page would be a security boundary violation.
+
+  if (url.startsWith("about:"))               return false;
+  // about:blank, about:newtab, etc. — browser-internal pseudo-pages.
+
+  if (url.startsWith("data:"))                return false;
+  // data: URIs can be huge blobs and won't restore meaningful content.
+
+  if (url.startsWith("javascript:"))          return false;
+  // javascript: pseudo-protocol — opening one would execute arbitrary code.
+
+  return true;
+  // All other schemes (https://, http://, file://) are safe to open.
+  // Note: file:// requires the user to grant "Allow access to file URLs" in
+  // chrome://extensions for the extension — it will silently fail without it.
+}
+
+// ── restoreSession ─────────────────────────────────────────────────────────────
+// Recreates all windows and tabs from a saved session.
+// Called by the RESTORE_SESSION message handler above.
+// "async" because we await multiple chrome.windows and chrome.tabs API calls.
+async function restoreSession(session) {
+
+  for (const win of session.windows) {
+    // Iterate over every window that was open when the session was saved.
+    // "win" is a Window object from chrome.windows.getAll({ populate: true }):
+    //   { id, type, state, focused, left, top, width, height, tabs: [...] }
+
+    if (win.type === "devtools") continue;
+    // Skip DevTools windows — restoring them opens a useless blank devtools panel.
+    // We do restore "popup" type windows (e.g. OAuth flows, picture-in-picture)
+    // because those are legitimate content windows the user might want back.
+
+    const rawTabs = win.tabs || [];
+    // win.tabs exists because we saved with populate:true. The || [] is a safety net
+    // against malformed data (e.g. a session saved by an older version of the extension).
+
+    if (rawTabs.length === 0) continue;
+    // A window with no tabs can't be meaningfully restored — skip it.
+
+    // ── Map each tab to a restorable form ──────────────────────────────────
+    const tabs = rawTabs.map((tab) => ({
+      url:    isRestorable(tab.url) ? tab.url : undefined,
+      // isRestorable() filters out chrome://, about:, etc.
+      // undefined is intentional: chrome.tabs.create with url:undefined opens
+      // the new tab page, which is better than an error or a blank page.
+
+      active: !!tab.active,
+      // !! coerces to a strict boolean. tab.active should already be boolean
+      // but Chrome storage round-trips through JSON, so this is defensive.
+
+      pinned: !!tab.pinned,
+      // Pinned tabs are anchored to the left of the tab strip and can't be closed
+      // by accident. Preserve the user's pinned state.
+
+      index: tab.index,
+      // The saved position in the tab strip (0-based left-to-right).
+      // Chrome uses this as a hint when creating tabs; the final order may
+      // shift slightly if tabs are created in a race, but is usually correct.
+    }));
+
+    // ── Build window creation options ───────────────────────────────────────
+    const createOpts = {
+      url:     tabs[0].url,
+      // The first tab's URL. undefined → new tab page.
+      // chrome.windows.create requires at least a url (or nothing for new tab page).
+
+      focused: false,
+      // Don't steal focus from the popup or the user's current window as we
+      // create restored windows in the background. The user can click in when ready.
+    };
+
+    if (win.state === "normal") {
+      // Only restore pixel position and size for normal (non-maximized) windows.
+      // For maximized/fullscreen windows, left/top/width/height are meaningless
+      // and passing them can confuse the window manager on some OS.
+      createOpts.left   = win.left;
+      createOpts.top    = win.top;
+      // left and top can be NEGATIVE on multi-monitor setups where a secondary
+      // monitor sits to the left of or above the primary. Chrome handles this correctly.
+      createOpts.width  = win.width;
+      createOpts.height = win.height;
+    }
+
+    // ── Create the window with its first tab ───────────────────────────────
+    const newWin = await chrome.windows.create(createOpts);
+    // chrome.windows.create() returns a Promise resolving to the new Window object.
+    // We await it so we have newWin.id before creating the remaining tabs below.
+    // newWin.id is Chrome's integer ID for the newly created window — it's different
+    // from win.id (which was the ID at save time and is now stale/closed).
+
+    // ── Add remaining tabs one by one ──────────────────────────────────────
+    // We use a sequential for loop rather than Promise.all so tabs are created
+    // in index order. With Promise.all, all creates start simultaneously and
+    // Chrome may assign positions out of order.
+    for (let i = 1; i < tabs.length; i++) {
+      await chrome.tabs.create({
+        windowId: newWin.id,
+        // Links this tab to the window we just created. Without this, the tab
+        // would open in Chrome's currently focused window instead.
+
+        url:      tabs[i].url,
+        // undefined → new tab page for any non-restorable saved URL.
+
+        active:   tabs[i].active,
+        // true for the tab that was active when the session was saved.
+        // Only one tab per window should have active:true — the saved data
+        // ensures this because Chrome always marks exactly one tab active.
+
+        pinned:   tabs[i].pinned,
+        // Restore the pinned state.
+
+        index:    tabs[i].index,
+        // Hint to Chrome where to place this tab in the strip.
+      });
+    }
+
+    // ── Restore window state (maximized / fullscreen / minimized) ──────────
+    if (win.state && win.state !== "normal") {
+      await chrome.windows.update(newWin.id, { state: win.state });
+      // chrome.windows.update() modifies an existing window.
+      // We apply the state AFTER all tabs are created because:
+      //   1. Maximizing before tabs load can cause layout flicker on some OS.
+      //   2. chrome.windows.create with state:"maximized" isn't reliably supported.
+      // "maximized"  → fills the screen (OS window manager handles it)
+      // "fullscreen" → browser enters fullscreen mode
+      // "minimized"  → window collapses to the taskbar
+    }
+  }
+  // All windows (and their tabs) have been recreated.
+}
 
 // ── Tab update listener ───────────────────────────────────────────────────────
 // chrome.tabs.onUpdated fires every time a tab changes state.

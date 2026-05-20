@@ -320,24 +320,96 @@ document.addEventListener("DOMContentLoaded", async () => {
     info.appendChild(metaEl);
     // nameEl is appended first → appears on top. metaEl → appears below.
 
-    // ── Delete button (right side) ────────────────────────────────────────────
+    // ── Launch button ─────────────────────────────────────────────────────────
+    // Phase 4: sends a RESTORE_SESSION message to background.js, which recreates
+    // all saved windows and tabs using chrome.windows.create + chrome.tabs.create.
+    const btnLaunch = document.createElement("button");
+    btnLaunch.className = "btn-launch";
+    btnLaunch.textContent = "Launch";
+    btnLaunch.setAttribute("aria-label", "Launch session " + session.name);
+    // aria-label: screen readers will say "Launch session Work Setup, button".
+
+    btnLaunch.addEventListener("click", async () => {
+      // ── Closure ───────────────────────────────────────────────────────────
+      // Like buildSessionRow's other handlers, this captures "session" from the
+      // enclosing scope — each Launch button knows exactly which session it
+      // belongs to without us passing arguments or using data attributes.
+      // It also captures "btnDelete" (declared below) so we can disable it
+      // while the restore is running.
+
+      btnLaunch.disabled = true;
+      btnDelete.disabled = true;
+      // Disable BOTH action buttons during the restore.
+      // - Disabling Launch prevents a double-launch.
+      // - Disabling Delete prevents the user from deleting the session
+      //   while its windows are in the middle of being created.
+      // NOTE: btnDelete is used before its declaration line in the source,
+      // but that is fine because JavaScript hoists function-scoped var declarations.
+      // Here we use const, which is NOT hoisted — however, the click handler is a
+      // closure that runs LATER (when clicked), by which time btnDelete is fully
+      // initialised. Closures capture the variable binding, not the current value,
+      // so this is safe even though btnDelete appears after btnLaunch in the code.
+
+      btnLaunch.textContent = "Launching…";
+      // … is the Unicode code point for the ellipsis character "…"
+      // Using the escape avoids any charset encoding issues in this source file.
+
+      const response = await chrome.runtime.sendMessage({
+        type:    "RESTORE_SESSION",
+        session: session,
+        // We send the entire saved session object so background.js has everything:
+        // session.windows  — array of Window objects to recreate
+        // session.displays — monitor layout at save time (used in future phases)
+        // session.name     — for logging / debugging in the service worker
+      });
+      // background.js receives this, runs restoreSession(message.session),
+      // and replies with { ok: true } or { error: "..." }.
+
+      if (response.error) {
+        // Something failed in background.js (API error, permission denied, etc.)
+        console.error("launch failed:", response.error);
+        btnLaunch.textContent = "Failed";
+        setTimeout(() => {
+          // Reset after 2 s so the user can try again or check the error in console.
+          btnLaunch.textContent = "Launch";
+          btnLaunch.disabled = false;
+          btnDelete.disabled = false;
+        }, 2000);
+        return;
+        // Exit early — don't fall through to the success block.
+      }
+
+      // ── Success ───────────────────────────────────────────────────────────
+      btnLaunch.classList.add("launched");
+      // The .launched CSS class turns the button green — matches the Save button's
+      // "success" colour to create a consistent visual language across the extension.
+
+      btnLaunch.textContent = "Launched!";
+      // The windows are now opening in Chrome. We give brief visual confirmation
+      // rather than closing the popup immediately, so the user can launch another
+      // session or make other changes before closing.
+
+      setTimeout(() => {
+        btnLaunch.textContent = "Launch";
+        btnLaunch.classList.remove("launched");
+        // Remove the green class so the button returns to its normal navy colour.
+        btnLaunch.disabled = false;
+        btnDelete.disabled = false;
+        // Re-enable both buttons — the restore is complete.
+      }, 2000);
+    });
+    // End of launch click handler.
+
+    // ── Delete button ─────────────────────────────────────────────────────────
     const btnDelete = document.createElement("button");
     btnDelete.className = "btn-delete";
     btnDelete.textContent = "Delete";
     btnDelete.setAttribute("aria-label", "Delete session " + session.name);
-    // aria-label provides accessible text for screen readers.
-    // Without it, a screen reader announces "Delete, button" for every row
-    // with no way to distinguish which session it refers to.
-    // With it, the reader says "Delete session Work Setup, button".
+    // aria-label: "Delete session Work Setup, button" for screen readers.
 
     btnDelete.addEventListener("click", async () => {
-      // ── Closure explanation ───────────────────────────────────────────────
-      // This inner function "closes over" the outer "session" variable.
-      // A closure means the inner function retains a reference to variables
-      // in its surrounding scope even after buildSessionRow() has returned.
-      // Each row gets its own "session" variable from the for...of loop,
-      // so each Delete button independently knows which session to remove.
-      // Without closures, we would need data-attributes or a Map — more complexity.
+      // Each Delete button closes over its own "session" variable (closure).
+      // See the Launch button's closure comment above for the full explanation.
 
       btnDelete.disabled = true;
       // Prevent double-clicks from triggering two concurrent deletes.
@@ -346,19 +418,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const sessions = stored.sessions || [];
 
       const updated = sessions.filter((s) => s.id !== session.id);
-      // Array.filter() returns a NEW array of only the items where the callback
-      // returns true. We keep every session whose ID is NOT the deleted one.
-      //
-      // WHY filter instead of splice?
-      // .splice(index, 1) removes by index — we would need to find the index first,
-      // and if a concurrent save happened between reading and deleting, the index
-      // could be wrong. Filtering by ID is always correct regardless of array order.
-      //
-      // The original "sessions" array is NOT mutated — filter always makes a copy.
-      // This is the immutable-update pattern common in React and Redux.
+      // Array.filter() returns a NEW array keeping only items where the callback
+      // returns true. We keep every session whose ID is NOT the one being deleted.
+      // filter() never mutates the original array — it always returns a new one.
+      // This is the immutable-update pattern: read → derive new state → write back.
 
       await chrome.storage.local.set({ sessions: updated });
-      // Write the filtered array back to storage. The deleted session is gone.
+      // Write the array-minus-deleted-item back to storage.
 
       await renderSessions();
       // Rebuild the list — the deleted row is absent because it is no longer in storage.
@@ -366,14 +432,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     // End of delete click handler.
 
     // ── Assemble and return ───────────────────────────────────────────────────
+    const actions = document.createElement("div");
+    actions.className = "row-actions";
+    // .row-actions is a flex container (see popup.css) that groups Launch + Delete
+    // side by side. Grouping them as one element makes the row's space-between
+    // layout work correctly: .session-info pushes left, .row-actions pushes right,
+    // and both buttons stay together as a unit.
+
+    actions.appendChild(btnLaunch);
+    actions.appendChild(btnDelete);
+    // Launch is first (leftmost in the group) — positive actions before destructive ones.
+    // Delete is last — users are less likely to accidentally click the rightmost button.
+
     row.appendChild(info);
-    row.appendChild(btnDelete);
-    // The row div now contains: <div.session-info> + <button.btn-delete>
-    // CSS flexbox (justify-content: space-between) positions them left and right.
+    row.appendChild(actions);
+    // Row final structure: [.session-info] [.row-actions → [Launch][Delete]]
 
     return row;
-    // Return the assembled element WITHOUT attaching it to the document.
-    // The caller (renderSessions) decides where and when to appendChild it.
+    // Return the assembled element to renderSessions(), which appends it to the DOM.
   }
   // End of buildSessionRow.
 

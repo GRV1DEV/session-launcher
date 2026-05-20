@@ -515,6 +515,62 @@ body {
   /* Centre-aligned empty states feel less like broken UI and more intentional. */
 }
 
+/* ── Row Actions Group ────────────────────────────────────────────────────────
+   A flex wrapper that holds the Launch and Delete buttons side by side on the
+   right of each session row. Grouping them lets us treat them as one unit for
+   the row's space-between layout, so the info stays left and both buttons stay
+   right — no matter how many buttons we add in future phases. */
+.row-actions {
+  display: flex;
+  /* Lays out Launch and Delete horizontally inside this group. */
+
+  gap: 6px;
+  /* Space between the two buttons. */
+
+  flex-shrink: 0;
+  /* Prevent this group from shrinking when session names are long.
+     The name truncates (text-overflow:ellipsis on .session-name);
+     the buttons always stay their full size. */
+
+  align-items: center;
+  /* Vertically centre both buttons relative to each other. */
+}
+
+/* ── Launch Button ────────────────────────────────────────────────────────────
+   The navy-blue button that restores a saved session. */
+.btn-launch {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;      /* bolder than Delete so Launch is visually dominant */
+  color: #ffffff;        /* white text on a dark background */
+  background-color: #0f3460;  /* brand navy — same as .title colour */
+  border: 1px solid #0f3460;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;   /* never wrap "Launch" to a second line */
+  transition: background-color 0.12s ease, transform 0.1s ease;
+}
+
+.btn-launch:hover {
+  background-color: #16213e;  /* slightly darker navy on hover */
+}
+
+.btn-launch:active {
+  transform: scale(0.96);     /* subtle press-down effect */
+}
+
+.btn-launch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  /* Greyed out while background.js is creating windows — prevents double-launch. */
+}
+
+.btn-launch.launched {
+  /* Added by popup.js for 2 seconds after a successful launch. */
+  background-color: #059669;  /* green — matches the Save button "success" colour */
+  border-color: #059669;
+}
+
 /* ── JSON Output Pre ──────────────────────────────────────────────────────────
    The <pre> element that holds the formatted JSON string. */
 .output-pre {
