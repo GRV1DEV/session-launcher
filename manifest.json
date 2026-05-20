@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Session Launcher",
-  "version": "0.1",
+  "version": "0.2",
   "description": "Launch and manage browser sessions quickly.",
   "action": {
     "default_popup": "popup.html",
@@ -10,7 +10,8 @@
   "permissions": [
     "tabs",
     "storage",
-    "sessions"
+    "sessions",
+    "system.display"
   ],
   "background": {
     "service_worker": "background.js"

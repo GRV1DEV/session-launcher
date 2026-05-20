@@ -16,9 +16,9 @@
 /* ── Body ────────────────────────────────────────────────────────────────────
    The body element represents the visible popup window itself. */
 body {
-  width: 300px;
-  /* Chrome popup width is set by the body (or a child element) width.
-     300px is a comfortable default — not too cramped, not too wide. */
+  width: 460px;
+  /* Widened from 300px to 460px for Phase 2 — we're now displaying JSON which
+     needs horizontal room. Chrome respects this as the popup width. */
 
   min-height: 120px;
   /* min-height ensures the popup never collapses to nothing even with little content. */
@@ -69,10 +69,204 @@ body {
   margin-left: 6px;     /* space between "Session Launcher" and "v0.1" */
 }
 
-/* ── Subtitle ────────────────────────────────────────────────────────────────
-   Styles the placeholder paragraph. */
-.subtitle {
-  font-size: 12px;      /* smaller than body text — it's secondary/placeholder */
-  color: #9ca3af;       /* light grey — clearly lower priority than the title */
-  margin-top: 8px;      /* space above the subtitle */
+/* ── Primary Button ──────────────────────────────────────────────────────────
+   The "Show Current Setup" button. */
+.btn-primary {
+  display: block;
+  /* display:block makes the button take the full width of its parent (.container),
+     not just hug its text content like the default inline-block would. */
+
+  width: 100%;
+  /* Combined with display:block, this stretches the button edge-to-edge
+     inside the .container padding. */
+
+  margin-top: 14px;
+  /* Space between the heading and the button. */
+
+  padding: 10px 0;
+  /* 10px top/bottom breathing room inside the button. 0 left/right because
+     the button is already full-width so horizontal padding would be wasted. */
+
+  background-color: #0f3460;
+  /* Deep blue — matches the heading color, creating visual unity. */
+
+  color: #ffffff;
+  /* White text on dark background for contrast. */
+
+  font-size: 13px;      /* slightly smaller than body text — buttons usually are */
+  font-weight: 600;     /* semi-bold — stands out without being heavy */
+  letter-spacing: 0.3px; /* tiny positive tracking makes all-caps-ish feel intentional */
+
+  border: none;
+  /* Remove the default browser border that all buttons have.
+     We'll rely on background-color and padding for the button shape. */
+
+  border-radius: 6px;
+  /* Rounds the corners. 6px is subtly rounded — not pill-shaped, not sharp. */
+
+  cursor: pointer;
+  /* Changes the mouse cursor to a hand/pointer when hovering.
+     Browsers show the hand cursor on <a> links by default but NOT on <button>.
+     Setting this makes it clear the element is clickable. */
+
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  /* CSS transitions animate changes to the listed properties.
+     "background-color 0.15s ease" — hover colour change takes 0.15s.
+     "transform 0.1s ease" — the press-down scale happens in 0.1s.
+     Without transition, state changes snap instantly, which feels cheap. */
+}
+
+.btn-primary:hover {
+  /* :hover is a CSS pseudo-class — it applies only when the mouse is over the element. */
+  background-color: #16213e;
+  /* Slightly darker blue on hover — gives tactile feedback that the button is interactive. */
+}
+
+.btn-primary:active {
+  /* :active applies while the mouse button is held down (during the click). */
+  transform: scale(0.97);
+  /* Shrinks the button to 97% of its size, simulating a physical press-down. */
+}
+
+.btn-primary:disabled {
+  /* :disabled applies when the button has the HTML `disabled` attribute set.
+     We set this in popup.js while the API queries are in flight (loading state). */
+  opacity: 0.6;
+  /* Makes the button look greyed-out and inactive. */
+
+  cursor: not-allowed;
+  /* Changes cursor to a "no" symbol so the user knows they can't click right now. */
+}
+
+/* ── Hidden utility class ─────────────────────────────────────────────────────
+   A reusable class to hide any element. popup.js toggles this on/off. */
+.hidden {
+  display: none;
+  /* display:none removes the element from the layout entirely — it takes up no space.
+     This is different from visibility:hidden, which hides the element but
+     still reserves its space in the layout. */
+}
+
+/* ── Output Section ──────────────────────────────────────────────────────────
+   The block that appears below the button after clicking "Show Current Setup". */
+.output-section {
+  border-top: 1px solid #e5e7eb;
+  /* A subtle horizontal rule to visually separate the output from the button area.
+     1px solid — thin and clean. #e5e7eb is a light grey. */
+
+  max-height: 420px;
+  /* Limits how tall the output area can grow.
+     Without this, a browser with 50 tabs would make the popup enormous. */
+
+  display: flex;
+  /* display:flex turns this into a flex container.
+     Its children (output-header and output-pre) become "flex items".
+     By default flex lays children out in a row; we set flex-direction below. */
+
+  flex-direction: column;
+  /* Stack flex children vertically (column) instead of horizontally (row).
+     This puts output-header on top and output-pre below it. */
+
+  overflow: hidden;
+  /* Clips any overflow from children (like the <pre>) at this container's boundary. */
+}
+
+/* ── Output Header Bar ────────────────────────────────────────────────────────
+   The strip above the JSON block containing the label and Copy button. */
+.output-header {
+  display: flex;
+  /* Flex here puts "Current Setup" label and "Copy" button on the same line. */
+
+  justify-content: space-between;
+  /* Pushes the two children to opposite ends of the row:
+     label to the left, Copy button to the right. */
+
+  align-items: center;
+  /* Vertically centres both children within the header height. */
+
+  padding: 8px 14px;
+  /* Inner breathing room. */
+
+  background-color: #f9fafb;
+  /* Very light grey — distinguishes the header from the white popup background. */
+
+  border-bottom: 1px solid #e5e7eb;
+  /* A thin line separating the header from the JSON content below. */
+}
+
+.output-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;       /* muted grey — label, not content */
+  text-transform: uppercase;
+  /* ALL CAPS label style — a common UI pattern for section labels/metadata. */
+  letter-spacing: 0.6px; /* extra tracking looks good with uppercase */
+}
+
+/* ── Copy Button ─────────────────────────────────────────────────────────────
+   Small secondary button to copy JSON to clipboard. */
+.btn-copy {
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #374151;
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;    /* subtle border defines the button without heavy colour */
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.btn-copy:hover {
+  background-color: #f3f4f6;    /* barely-there grey on hover */
+}
+
+.btn-copy.copied {
+  /* We add this class in popup.js for 1.5 seconds after copying.
+     It gives the user visual confirmation that the copy worked. */
+  color: #059669;               /* green text — "success" colour */
+  border-color: #6ee7b7;        /* green border to match */
+}
+
+/* ── JSON Output Pre ──────────────────────────────────────────────────────────
+   The <pre> element that holds the formatted JSON string. */
+.output-pre {
+  margin: 0;
+  /* Reset any browser default margin — the <pre> element sometimes has default margin. */
+
+  padding: 12px 14px;
+  /* Inner spacing around the JSON text. */
+
+  font-family: "Cascadia Code", "Fira Code", "Consolas", "Menlo", monospace;
+  /* Monospace fonts for code/data output. These are ordered by preference:
+     "Cascadia Code" — VS Code's default monospace (Windows).
+     "Fira Code" — popular monospace with ligatures.
+     "Consolas" — built-in Windows monospace, very readable.
+     "Menlo" — macOS built-in monospace.
+     monospace — OS fallback if none of the above exist. */
+
+  font-size: 11px;
+  /* Small font so more JSON fits without wrapping. */
+
+  line-height: 1.6;
+  /* 1.6× the font size between lines — gives JSON blocks room to breathe. */
+
+  color: #1f2937;
+  /* Near-black — high contrast for readability against the white background. */
+
+  white-space: pre-wrap;
+  /* pre-wrap = preserve whitespace AND wrap long lines at the container edge.
+     Without wrapping, long URLs in JSON would overflow the popup horizontally.
+     Plain "pre" would not wrap; "pre-wrap" wraps while keeping intentional newlines. */
+
+  overflow-y: auto;
+  /* Adds a vertical scrollbar ONLY when the content is taller than the container.
+     "auto" means: no scrollbar when content fits, scrollbar when it overflows.
+     This lets the user scroll through long JSON without the popup becoming huge. */
+
+  flex: 1;
+  /* flex:1 is shorthand for flex-grow:1 flex-shrink:1 flex-basis:0.
+     Inside the flex-column output-section, this tells the <pre> to take up
+     all remaining vertical space after the header is sized.
+     Combined with max-height on .output-section, it creates a scrollable pane. */
 }

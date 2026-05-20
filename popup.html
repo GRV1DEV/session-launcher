@@ -37,19 +37,53 @@
          class="container" lets popup.css target this specific div to style it.
          Using classes (not IDs) for styling is a best practice for reusability. -->
 
-    <h1 class="title">Session Launcher <span class="version">v0.1</span></h1>
+    <h1 class="title">Session Launcher <span class="version">v0.2</span></h1>
     <!-- <h1> is the top-level heading — only one per page is best practice.
          "Session Launcher" is the main text.
          <span class="version"> wraps the version number so we can style it differently
          (smaller, lighter color) without affecting the main heading text.
          <span> is an inline element — it doesn't break onto a new line. -->
 
-    <p class="subtitle">Your sessions will appear here.</p>
-    <!-- <p> is a paragraph element — block-level, gets its own line.
-         class="subtitle" lets us style this placeholder text separately. -->
+    <button id="btn-scan" class="btn-primary">Show Current Setup</button>
+    <!-- <button> creates a clickable button element.
+         id="btn-scan" gives it a UNIQUE identifier so popup.js can find it with
+         document.getElementById("btn-scan"). IDs must be unique per page.
+         class="btn-primary" lets CSS style all "primary" buttons consistently.
+         The text inside the tags is what the user sees on the button face. -->
 
   </div>
   <!-- end .container -->
+
+  <div id="output-section" class="output-section hidden">
+    <!-- This div holds the query results. It starts hidden (via the "hidden" CSS class)
+         and becomes visible only after the user clicks the button.
+         id="output-section" lets popup.js toggle its visibility.
+         Keeping results outside .container lets them span the full popup width. -->
+
+    <div class="output-header">
+      <!-- A header bar above the JSON output — holds a label and a copy button side-by-side.
+           display:flex in CSS will put these on the same line with space between them. -->
+
+      <span class="output-label">Current Setup</span>
+      <!-- <span> is an inline element used here as a text label.
+           It will sit on the left side of the flex header row. -->
+
+      <button id="btn-copy" class="btn-copy">Copy</button>
+      <!-- A secondary button to copy the JSON to the clipboard.
+           id="btn-copy" so popup.js can attach a click handler to it. -->
+    </div>
+    <!-- end .output-header -->
+
+    <pre id="output-pre" class="output-pre"></pre>
+    <!-- <pre> (preformatted text) is perfect for displaying JSON because:
+         1. It preserves all whitespace and newlines exactly as written
+         2. It uses a monospace font by default so columns line up
+         3. It does NOT collapse multiple spaces into one like normal HTML does
+         id="output-pre" so popup.js can set its textContent to the formatted JSON.
+         It starts empty — popup.js fills it on button click. -->
+
+  </div>
+  <!-- end #output-section -->
 
   <script src="popup.js"></script>
   <!-- ^^^ Loads our JavaScript file. Placed at the END of <body> (not in <head>) so that
