@@ -60,6 +60,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // when the extension has many different message types in later phases.
   // Think of it like an HTTP method+path: "what action are you requesting?"
 
+  if (message.type === "CAPTURE_SESSION") {
+    // ── Why we handle both queries here, not just the display one ────────────
+    // chrome.system.display is unavailable in popup context (Phase 2 lesson).
+    // We could call chrome.windows.getAll from popup.js — that API IS available
+    // there — but bundling both into one background message is better because:
+    //   1. One sendMessage round-trip instead of two (faster, fewer moving parts)
+    //   2. Promise.all runs both queries at the SAME instant (truly parallel),
+    //      so the captured snapshot is as consistent as possible.
+    //   3. All Chrome API calls live in background.js — popup.js stays UI-only.
+
+    Promise.all([
+      // Promise.all() takes an array of Promises and returns a new Promise that:
+      //   - resolves when ALL of them resolve (with an array of their results)
+      //   - rejects immediately if ANY of them reject (fail-fast behaviour)
+      // The two queries run in parallel — Chrome doesn't wait for the first
+      // to finish before starting the second.
+
+      chrome.windows.getAll({ populate: true }),
+      // populate:true includes the nested .tabs array on each Window object.
+      // Without it, windows would only have IDs and state — no tab data.
+
+      chrome.system.display.getInfo(),
+      // Returns an array of DisplayInfo objects, one per connected monitor.
+      // Only available in service worker context — that's why we're here.
+    ])
+    .then(([windows, displays]) => {
+      // Array destructuring: the resolved value of Promise.all is an array
+      // [result0, result1] matching the order of the input array.
+      // [windows, displays] unpacks that array into two named variables.
+      sendResponse({ windows, displays });
+      // Send both results back as a plain object.
+      // { windows, displays } is ES6 shorthand for { windows: windows, displays: displays }.
+      // popup.js receives this as the resolved value of its await sendMessage().
+    })
+    .catch((err) => {
+      sendResponse({ error: err.message });
+      // If either query rejects, send the error message back.
+      // popup.js checks for .error and throws it as a real Error.
+    });
+
+    return true;
+    // CRITICAL: synchronous return true keeps the message channel open
+    // while Promise.all is running. Same reason as GET_DISPLAY_INFO above.
+  }
+
   if (message.type === "GET_DISPLAY_INFO") {
     // ── Why this handler cannot be "async" ──────────────────────────────
     // You might expect to write:  addListener(async (message, ...) => { ... })

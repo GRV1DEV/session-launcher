@@ -228,6 +228,293 @@ body {
   border-color: #6ee7b7;        /* green border to match */
 }
 
+/* ── Save Row ────────────────────────────────────────────────────────────────
+   The flex row containing the session name input and the Save button. */
+.save-row {
+  display: flex;
+  /* Flex puts the input and button on the same line automatically.
+     Without flex, block elements would stack vertically and inline elements
+     would wrap unpredictably. Flex is the right tool for a "row of controls". */
+
+  gap: 8px;
+  /* gap sets the space BETWEEN flex children (input and button).
+     It's cleaner than adding margin-right to the input because:
+     - gap applies only between items, never on the outside edges
+     - if the layout ever wraps to multiple rows, gap handles row spacing too */
+
+  margin-top: 14px;
+  /* Space between the heading and this row. */
+}
+
+/* ── Session Name Input ───────────────────────────────────────────────────────
+   The text field where the user types the session name. */
+.session-name-input {
+  flex: 1;
+  /* flex:1 tells this input to grow and fill ALL remaining horizontal space
+     in .save-row after the Save button takes its natural width.
+     Without this, the input would only be as wide as its default size. */
+
+  padding: 8px 10px;
+  /* Inner spacing: 8px top/bottom, 10px left/right — comfortable touch target. */
+
+  font-size: 13px;
+  /* Match the button font size so the row looks visually balanced. */
+
+  font-family: inherit;
+  /* <input> elements don't inherit font-family from body by default in all browsers.
+     "inherit" forces it to use the same system font stack we set on body. */
+
+  color: #1a1a2e;
+  /* Match the body text colour. */
+
+  background-color: #ffffff;
+  /* White fill — explicit so it's consistent across OS themes. */
+
+  border: 1px solid #d1d5db;
+  /* Subtle grey border to define the input boundary. */
+
+  border-radius: 6px;
+  /* Match the button's corner radius for visual consistency. */
+
+  outline: none;
+  /* Remove the default blue browser outline on focus.
+     We replace it with a custom box-shadow below (:focus rule). */
+
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  /* Smooth transition when the border colour changes on focus or error. */
+}
+
+.session-name-input:focus {
+  /* :focus applies when the input has keyboard focus (user is typing). */
+  border-color: #0f3460;
+  /* Change border to our brand blue on focus — standard "active field" signal. */
+
+  box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.15);
+  /* box-shadow with spread:3px and colour:rgba(...0.15) creates a soft blue glow.
+     This is a common focus-ring technique that looks better than the default outline.
+     "0 0 0" means no x-offset, no y-offset, no blur — just a solid ring. */
+}
+
+.session-name-input.input-error {
+  /* .input-error is added by popup.js when the user clicks Save with an empty field. */
+  border-color: #ef4444;
+  /* Red border — the universal "something is wrong here" signal. */
+
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+  /* Red glow to match. rgba(239, 68, 68) is the same red as border, just transparent. */
+}
+
+/* ── Save Button ─────────────────────────────────────────────────────────────
+   The green "Save" button to the right of the input. */
+.btn-save {
+  padding: 8px 16px;
+  /* Tighter horizontal than .btn-primary because this button is inline in a row,
+     not full-width. 16px left/right gives a comfortable click target. */
+
+  background-color: #059669;
+  /* Emerald green — visually distinct from the blue .btn-primary.
+     Green = "confirm / positive action" in most UI conventions. */
+
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  /* white-space:nowrap prevents the button label from wrapping to two lines
+     if the popup is somehow narrower than expected. */
+
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  /* Same hover/active transition pattern as .btn-primary. */
+}
+
+.btn-save:hover   { background-color: #047857; } /* darker green on hover */
+.btn-save:active  { transform: scale(0.97);     } /* press-down effect */
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  /* Same disabled treatment as .btn-primary — greyed out, no click cursor. */
+}
+
+/* ── Sessions Section ────────────────────────────────────────────────────────
+   The always-visible block that shows the saved sessions list. */
+.sessions-section {
+  border-top: 1px solid #e5e7eb;
+  /* Thin separator line between the save controls and the sessions list.
+     Same visual language as .output-section's border-top. */
+
+  max-height: 260px;
+  /* Cap the height so a user with many sessions doesn't see a giant popup.
+     260px fits roughly 4–5 session rows before scrolling. */
+
+  display: flex;
+  flex-direction: column;
+  /* Stack sessions-header on top of sessions-list vertically. */
+
+  overflow: hidden;
+  /* Clip children at this container's boundary so the scrollbar appears
+     on .sessions-list (the inner element) rather than the whole popup. */
+}
+
+/* ── Sessions Header ─────────────────────────────────────────────────────────
+   The label bar at the top of the sessions section. */
+.sessions-header {
+  display: flex;
+  align-items: center;
+  padding: 7px 14px;
+  background-color: #f9fafb; /* light grey, same as .output-header */
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  /* flex-shrink:0 prevents the header from being squished if the list is tall.
+     By default flex items can shrink; we want the header to always be its full height. */
+}
+
+.sessions-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  /* Same style as .output-label — uppercase section heading, muted grey. */
+}
+
+/* ── Sessions List ───────────────────────────────────────────────────────────
+   The scrollable container that holds session rows or the empty state. */
+.sessions-list {
+  overflow-y: auto;
+  /* auto: show vertical scrollbar only when the content overflows.
+     The scrollbar appears here (inside the list) not on the whole popup. */
+
+  flex: 1;
+  /* Grow to fill remaining height inside .sessions-section after the header.
+     Combined with max-height on .sessions-section, this creates a scrollable pane. */
+}
+
+/* ── Session Row ─────────────────────────────────────────────────────────────
+   One saved session: [name + meta on the left] [Delete button on the right]. */
+.session-row {
+  display: flex;
+  /* Flexbox puts .session-info and .btn-delete on the same horizontal line. */
+
+  justify-content: space-between;
+  /* Push info to the left edge, Delete button to the right edge. */
+
+  align-items: center;
+  /* Vertically centre both children in the row. */
+
+  padding: 9px 14px;
+  /* Breathing room inside the row. */
+
+  border-bottom: 1px solid #f3f4f6;
+  /* Very subtle divider between rows. #f3f4f6 is almost white — just enough
+     to separate rows without visual noise. */
+
+  transition: background-color 0.1s ease;
+  /* Smooth hover highlight. */
+}
+
+.session-row:last-child {
+  /* :last-child targets only the final row in the list. */
+  border-bottom: none;
+  /* Remove the divider on the last row so it doesn't double up with the
+     outer container's border. */
+}
+
+.session-row:hover {
+  background-color: #f9fafb;
+  /* Very light grey on hover — subtle "you can interact with this" hint. */
+}
+
+/* ── Session Info ────────────────────────────────────────────────────────────
+   The left side of a session row: name stacked above metadata. */
+.session-info {
+  display: flex;
+  flex-direction: column;
+  /* Stack name on top, meta text below. */
+
+  gap: 2px;
+  /* Small gap between name and meta lines. */
+
+  min-width: 0;
+  /* A flex item's minimum size defaults to the size of its content.
+     If the session name is very long it would push the Delete button off screen.
+     min-width:0 allows the info block to shrink below its content size,
+     letting the text truncate via text-overflow (set on .session-name). */
+}
+
+/* ── Session Name ────────────────────────────────────────────────────────────
+   The user-entered name displayed in bold on the top line of a row. */
+.session-name {
+  font-size: 13px;
+  font-weight: 600;    /* semi-bold so the name reads as the primary piece of info */
+  color: #111827;      /* near-black — highest contrast, most important text */
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* These three properties together implement text truncation:
+     white-space:nowrap   — don't wrap to a second line
+     overflow:hidden      — clip text that doesn't fit
+     text-overflow:ellipsis — show "…" at the cut-off point
+     A name like "Very Long Session Name That Exceeds The Width" becomes
+     "Very Long Session Name That…" */
+}
+
+/* ── Session Meta ────────────────────────────────────────────────────────────
+   The second line: "3 windows · 12 tabs · May 20" */
+.session-meta {
+  font-size: 11px;
+  color: #9ca3af;      /* light grey — secondary information, lower visual priority */
+}
+
+/* ── Delete Button ───────────────────────────────────────────────────────────
+   Small button on the right side of each session row. */
+.btn-delete {
+  flex-shrink: 0;
+  /* flex-shrink:0 prevents the Delete button from being squished when the
+     session name is long. The name truncates; the button stays full size. */
+
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;           /* starts grey — not alarming until you hover */
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
+  /* Transition all three properties simultaneously for a smooth state change. */
+}
+
+.btn-delete:hover {
+  color: #dc2626;            /* red text on hover — "danger" signal */
+  border-color: #fca5a5;     /* light red border to match */
+  background-color: #fef2f2; /* very light red fill — reinforces the warning */
+}
+
+.btn-delete:active {
+  transform: scale(0.96);   /* slight press-down on click */
+}
+
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  /* Greyed out while the delete is in progress (async storage write). */
+}
+
+/* ── Empty State ─────────────────────────────────────────────────────────────
+   The placeholder paragraph shown when no sessions have been saved yet. */
+.sessions-empty {
+  padding: 16px 14px;
+  /* Generous padding so the message doesn't look squished in the list area. */
+
+  font-size: 12px;
+  color: #9ca3af;    /* light grey — this is hint text, not important content */
+  text-align: center;
+  /* Centre-aligned empty states feel less like broken UI and more intentional. */
+}
+
 /* ── JSON Output Pre ──────────────────────────────────────────────────────────
    The <pre> element that holds the formatted JSON string. */
 .output-pre {

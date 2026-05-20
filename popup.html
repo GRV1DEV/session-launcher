@@ -37,12 +37,40 @@
          class="container" lets popup.css target this specific div to style it.
          Using classes (not IDs) for styling is a best practice for reusability. -->
 
-    <h1 class="title">Session Launcher <span class="version">v0.2</span></h1>
+    <h1 class="title">Session Launcher <span class="version">v0.3</span></h1>
     <!-- <h1> is the top-level heading — only one per page is best practice.
          "Session Launcher" is the main text.
          <span class="version"> wraps the version number so we can style it differently
          (smaller, lighter color) without affecting the main heading text.
          <span> is an inline element — it doesn't break onto a new line. -->
+
+    <div class="save-row">
+      <!-- .save-row is a flex container that puts the input and button side by side.
+           Flexbox is used instead of float or inline-block because it handles
+           sizing automatically: the input stretches to fill remaining space,
+           the button stays its natural width. -->
+
+      <input
+        type="text"
+        id="session-name"
+        class="session-name-input"
+        placeholder="Name this session…"
+        maxlength="60"
+        autocomplete="off"
+      />
+      <!-- type="text" — a single-line text field (vs "password", "email", etc.)
+           id="session-name" — popup.js reads this with getElementById.
+           placeholder — the grey hint text shown when the field is empty.
+           maxlength="60" — browser enforces this limit; no JS needed.
+           autocomplete="off" — prevents Chrome's address-bar suggestions from
+           appearing, which would look odd in an extension popup. -->
+
+      <button id="btn-save" class="btn-save">Save</button>
+      <!-- The Save button sits to the right of the input inside the flex row.
+           id="btn-save" for the click handler in popup.js.
+           class="btn-save" for its own green colour style (distinct from btn-primary). -->
+    </div>
+    <!-- end .save-row -->
 
     <button id="btn-scan" class="btn-primary">Show Current Setup</button>
     <!-- <button> creates a clickable button element.
@@ -53,6 +81,27 @@
 
   </div>
   <!-- end .container -->
+
+  <div id="sessions-section" class="sessions-section">
+    <!-- This section is ALWAYS visible — it shows either the saved sessions list
+         or an empty-state message. No "hidden" class needed here.
+         It sits between the save controls and the JSON output panel. -->
+
+    <div class="sessions-header">
+      <!-- Header bar above the list — same visual pattern as .output-header. -->
+      <span class="sessions-label">Saved Sessions</span>
+      <!-- Label text. <span> is inline so it doesn't force a line break.
+           CSS will uppercase and style this as a section heading. -->
+    </div>
+    <!-- end .sessions-header -->
+
+    <div id="sessions-list" class="sessions-list"></div>
+    <!-- Empty div — popup.js fills this with session rows (or an empty-state
+         message) every time the popup opens or a save/delete happens.
+         id="sessions-list" is the target for appendChild() calls in popup.js. -->
+
+  </div>
+  <!-- end #sessions-section -->
 
   <div id="output-section" class="output-section hidden">
     <!-- This div holds the query results. It starts hidden (via the "hidden" CSS class)
