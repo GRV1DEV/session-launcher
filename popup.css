@@ -61,6 +61,16 @@ body::-webkit-scrollbar-thumb:hover   { background: var(--pink-glow); }
   margin-bottom: 14px;
 }
 
+.title-bolt {
+  -webkit-text-fill-color: var(--orange);
+  color: var(--orange);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  filter: drop-shadow(0 0 5px rgba(255, 107, 0, 0.85));
+  font-style: normal;
+}
+
 .version {
   font-size: 10px;
   font-weight: 400;
