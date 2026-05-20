@@ -1,0 +1,78 @@
+/* popup.css — styles the extension popup window */
+
+/* ── Reset & Box Model ───────────────────────────────────────────────────────
+   By default, browsers add their own padding and margin to elements (user-agent
+   stylesheet). The * selector targets EVERY element and overrides those defaults
+   so our layout is predictable and consistent. */
+* {
+  margin: 0;       /* removes default outer spacing on all sides */
+  padding: 0;      /* removes default inner spacing on all sides */
+  box-sizing: border-box;
+  /* box-sizing: border-box means padding and border are INCLUDED in the element's
+     declared width/height. Without this, a 200px div with 10px padding becomes
+     220px wide — confusing. border-box makes sizing intuitive. */
+}
+
+/* ── Body ────────────────────────────────────────────────────────────────────
+   The body element represents the visible popup window itself. */
+body {
+  width: 300px;
+  /* Chrome popup width is set by the body (or a child element) width.
+     300px is a comfortable default — not too cramped, not too wide. */
+
+  min-height: 120px;
+  /* min-height ensures the popup never collapses to nothing even with little content. */
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* -apple-system and BlinkMacSystemFont are Apple system fonts (San Francisco).
+     "Segoe UI" is the default Windows font.
+     Roboto is the default Android/Chrome OS font.
+     sans-serif is the fallback if none of the above are available.
+     Listing system fonts like this makes the extension feel native on every OS. */
+
+  font-size: 14px;
+  /* Base font size. All rem units (not used yet) will be relative to this. */
+
+  color: #1a1a2e;
+  /* Dark navy — easier on the eyes than pure black (#000). */
+
+  background-color: #ffffff;
+  /* White background for the popup. */
+}
+
+/* ── Container ───────────────────────────────────────────────────────────────
+   .container is the inner wrapper div. We use it to add padding without
+   affecting the body's width calculations. */
+.container {
+  padding: 16px 20px;
+  /* Shorthand: 16px top/bottom, 20px left/right.
+     This creates breathing room between the popup edge and the content. */
+}
+
+/* ── Title ───────────────────────────────────────────────────────────────────
+   Styles the <h1> heading. */
+.title {
+  font-size: 18px;      /* slightly larger than body text to establish hierarchy */
+  font-weight: 700;     /* bold — 700 is the standard bold weight */
+  color: #0f3460;       /* deep blue, distinct from body text */
+  margin-bottom: 4px;   /* small gap between title and subtitle */
+  letter-spacing: -0.3px; /* tighten letter spacing slightly for large bold text */
+}
+
+/* ── Version Badge ───────────────────────────────────────────────────────────
+   Styles the <span class="version"> inside the heading. */
+.version {
+  font-size: 11px;      /* much smaller than the heading text */
+  font-weight: 500;     /* medium weight — lighter than the bold heading */
+  color: #6b7280;       /* muted grey — de-emphasised, secondary info */
+  vertical-align: middle; /* aligns the small span to the middle of the heading text */
+  margin-left: 6px;     /* space between "Session Launcher" and "v0.1" */
+}
+
+/* ── Subtitle ────────────────────────────────────────────────────────────────
+   Styles the placeholder paragraph. */
+.subtitle {
+  font-size: 12px;      /* smaller than body text — it's secondary/placeholder */
+  color: #9ca3af;       /* light grey — clearly lower priority than the title */
+  margin-top: 8px;      /* space above the subtitle */
+}

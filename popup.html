@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- ^^^ DOCTYPE tells the browser this is an HTML5 document. Always the first line. -->
+
+<html lang="en">
+<!-- ^^^ <html> is the root element. lang="en" helps screen readers and search engines. -->
+
+<head>
+  <!-- <head> holds metadata — stuff the user doesn't see but the browser needs. -->
+
+  <meta charset="UTF-8" />
+  <!-- ^^^ charset="UTF-8" means the file is encoded as UTF-8.
+       This lets you use special characters (accents, emoji, etc.) without issues.
+       Always declare this; without it the browser guesses and can render garbage. -->
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- ^^^ "viewport" meta tag controls how the page scales on different screen sizes.
+       width=device-width: use the actual device width (not 980px desktop default).
+       initial-scale=1.0: don't zoom in or out on load.
+       Extension popups are tiny fixed windows, so this keeps things crisp. -->
+
+  <title>Session Launcher</title>
+  <!-- ^^^ <title> sets the text in the browser tab.
+       In a popup this isn't shown to the user, but it's good practice to set it. -->
+
+  <link rel="stylesheet" href="popup.css" />
+  <!-- ^^^ Links an external CSS file. rel="stylesheet" tells the browser what kind of link this is.
+       href="popup.css" is the path to the CSS file, relative to this HTML file.
+       Separating CSS into its own file keeps HTML clean and styles reusable. -->
+
+</head>
+
+<body>
+  <!-- <body> contains everything the user actually sees. -->
+
+  <div class="container">
+    <!-- <div> is a generic block-level container — a box to group related elements.
+         class="container" lets popup.css target this specific div to style it.
+         Using classes (not IDs) for styling is a best practice for reusability. -->
+
+    <h1 class="title">Session Launcher <span class="version">v0.1</span></h1>
+    <!-- <h1> is the top-level heading — only one per page is best practice.
+         "Session Launcher" is the main text.
+         <span class="version"> wraps the version number so we can style it differently
+         (smaller, lighter color) without affecting the main heading text.
+         <span> is an inline element — it doesn't break onto a new line. -->
+
+    <p class="subtitle">Your sessions will appear here.</p>
+    <!-- <p> is a paragraph element — block-level, gets its own line.
+         class="subtitle" lets us style this placeholder text separately. -->
+
+  </div>
+  <!-- end .container -->
+
+  <script src="popup.js"></script>
+  <!-- ^^^ Loads our JavaScript file. Placed at the END of <body> (not in <head>) so that
+       the HTML elements above are already in the DOM before JS tries to access them.
+       In MV3, popup scripts run in an isolated world — they cannot access page scripts. -->
+
+</body>
+</html>
