@@ -46,6 +46,68 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 // End of onInstalled listener.
 
+// ── Message listener ──────────────────────────────────────────────────────────
+// chrome.runtime.onMessage fires whenever any part of the extension calls
+// chrome.runtime.sendMessage(). It is the backbone of communication between:
+//   popup.js  <-->  background.js  (and content scripts, if we add them later)
+//
+// The listener receives three arguments:
+//   message    — the plain object the sender passed to sendMessage()
+//   sender     — metadata about who sent the message (tab, frame, extension id)
+//   sendResponse — a function you call to send data back to the sender
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // We use message.type as a routing key — a convention that scales well
+  // when the extension has many different message types in later phases.
+  // Think of it like an HTTP method+path: "what action are you requesting?"
+
+  if (message.type === "GET_DISPLAY_INFO") {
+    // ── Why this handler cannot be "async" ──────────────────────────────
+    // You might expect to write:  addListener(async (message, ...) => { ... })
+    // That looks clean, but it breaks the response mechanism.
+    //
+    // Chrome checks the RETURN VALUE of this listener function to decide
+    // whether to keep the message channel open:
+    //   return true  → "I will call sendResponse later, keep the channel open"
+    //   return false / undefined → "I'm done, close the channel now"
+    //
+    // An async function ALWAYS returns a Promise object (even "return true"
+    // becomes Promise<true>). Chrome sees a non-boolean truthy value and
+    // closes the channel immediately — sendResponse is then called on a dead
+    // channel and the popup's awaited Promise never resolves.
+    //
+    // The correct pattern: synchronous listener + .then() for the async work
+    // + explicit "return true" so Chrome holds the channel open.
+
+    chrome.system.display.getInfo()
+      // .then() is the Promise callback style — equivalent to await but usable
+      // inside a synchronous function. It runs when getInfo() resolves.
+      .then((displays) => {
+        // "displays" is the array of DisplayInfo objects from the Chrome platform.
+        sendResponse(displays);
+        // sendResponse() sends "displays" back to whoever called sendMessage().
+        // In popup.js, the awaited Promise resolves to this value.
+      })
+      .catch((err) => {
+        // .catch() runs if getInfo() rejects (e.g. permission missing at runtime).
+        sendResponse({ error: err.message });
+        // We send back a plain object with an "error" key instead of throwing,
+        // because sendResponse cannot propagate a real Error across the message
+        // channel — it only serialises plain JSON-compatible values.
+        // popup.js checks for { error: "..." } and re-throws it as a real Error.
+        console.error("GET_DISPLAY_INFO failed:", err);
+      });
+
+    return true;
+    // ^^^ CRITICAL: this synchronous "return true" tells Chrome:
+    // "this listener will call sendResponse asynchronously — keep the port open."
+    // Without it, the message channel closes before .then() fires,
+    // and popup.js receives undefined instead of the display array.
+  }
+  // If message.type is anything else, we fall through without returning true,
+  // which tells Chrome this listener doesn't handle that message type.
+});
+// End of onMessage listener.
+
 // ── Tab update listener ───────────────────────────────────────────────────────
 // chrome.tabs.onUpdated fires every time a tab changes state.
 // "changeInfo" tells you WHAT changed (loading status, URL, title, favicon, etc.)

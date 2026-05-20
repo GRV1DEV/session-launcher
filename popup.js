@@ -88,14 +88,25 @@ document.addEventListener("DOMContentLoaded", () => {
       //   }
       // ]
 
-      // ── Query 2: All connected displays/monitors ─────────────────────────
-      // chrome.system.display.getInfo() returns a Promise resolving to an array
-      // of DisplayInfo objects — one per physical monitor/screen.
+      // ── Query 2: Display info via message to background ──────────────────
+      // WHY we can't call chrome.system.display here directly:
+      //   chrome.system is only available in the service worker (background.js).
+      //   Extension popup pages run in a different, more restricted context where
+      //   that namespace simply does not exist — hence the original error:
+      //   "Cannot read properties of undefined (reading 'display')".
       //
-      // Requires the "system.display" permission in manifest.json.
-      // Without that permission, calling this API throws a runtime error.
-      const displays = await chrome.system.display.getInfo();
-      // Each DisplayInfo object looks like:
+      // The fix: Chrome's message passing system.
+      //   popup.js  →  chrome.runtime.sendMessage({ type: "GET_DISPLAY_INFO" })
+      //   background.js receives it, calls chrome.system.display.getInfo(), replies.
+      //   popup.js  ←  the reply lands here as the resolved value of the Promise.
+      //
+      // chrome.runtime.sendMessage() in MV3 returns a Promise (no callback needed).
+      // We "await" it so execution pauses here until background.js calls sendResponse.
+      const displays = await chrome.runtime.sendMessage({ type: "GET_DISPLAY_INFO" });
+      // "displays" is now whatever background.js passed to sendResponse().
+      // If background.js sent back an error object, the check below catches it.
+      //
+      // Shape of each DisplayInfo object (set by the Chrome platform, not us):
       // {
       //   id: "DP-1",
       //   name: "HP Z27k G3 4K",
@@ -106,8 +117,15 @@ document.addEventListener("DOMContentLoaded", () => {
       //   dpiX: 163, dpiY: 163,
       //   rotation: 0
       // }
-      // bounds   = total physical pixel dimensions of the screen.
-      // workArea = usable area after subtracting taskbar / dock.
+      // bounds   = full physical pixel dimensions of the screen.
+      // workArea = usable area after subtracting the OS taskbar / dock.
+
+      if (displays && displays.error) {
+        // background.js wraps errors in { error: "message string" } before sending.
+        // We turn that into a real thrown Error so the catch block below handles it
+        // the same way it handles any other failure in this try block.
+        throw new Error("Display query failed: " + displays.error);
+      }
 
       // ── Build the result object ──────────────────────────────────────────
       // We wrap both results in a single object so the JSON output is organised.
