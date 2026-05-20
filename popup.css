@@ -1,615 +1,296 @@
-/* popup.css — styles the extension popup window */
-
-/* ── Reset & Box Model ───────────────────────────────────────────────────────
-   By default, browsers add their own padding and margin to elements (user-agent
-   stylesheet). The * selector targets EVERY element and overrides those defaults
-   so our layout is predictable and consistent. */
-* {
-  margin: 0;       /* removes default outer spacing on all sides */
-  padding: 0;      /* removes default inner spacing on all sides */
-  box-sizing: border-box;
-  /* box-sizing: border-box means padding and border are INCLUDED in the element's
-     declared width/height. Without this, a 200px div with 10px padding becomes
-     220px wide — confusing. border-box makes sizing intuitive. */
+/* ── Custom properties ─────────────────────────────────────────────────────── */
+:root {
+  --bg:         #0a0a0f;
+  --bg-card:    #10101a;
+  --bg-hover:   #16162a;
+  --pink:       #ff006e;
+  --orange:     #ff6b00;
+  --pink-dim:   rgba(255, 0, 110, 0.18);
+  --pink-glow:  rgba(255, 0, 110, 0.55);
+  --orange-dim: rgba(255, 107, 0, 0.18);
+  --text:       #e8e8f0;
+  --text-dim:   #606080;
+  --border:     rgba(255, 0, 110, 0.22);
+  --radius:     6px;
+  --font:       "JetBrains Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
 }
 
-/* ── Body ────────────────────────────────────────────────────────────────────
-   The body element represents the visible popup window itself. */
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Root ──────────────────────────────────────────────────────────────────── */
 body {
   width: 460px;
-  /* Widened from 300px to 460px for Phase 2 — we're now displaying JSON which
-     needs horizontal room. Chrome respects this as the popup width. */
-
-  min-height: 120px;
-  /* min-height ensures the popup never collapses to nothing even with little content. */
-
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  /* -apple-system and BlinkMacSystemFont are Apple system fonts (San Francisco).
-     "Segoe UI" is the default Windows font.
-     Roboto is the default Android/Chrome OS font.
-     sans-serif is the fallback if none of the above are available.
-     Listing system fonts like this makes the extension feel native on every OS. */
-
-  font-size: 14px;
-  /* Base font size. All rem units (not used yet) will be relative to this. */
-
-  color: #1a1a2e;
-  /* Dark navy — easier on the eyes than pure black (#000). */
-
-  background-color: #ffffff;
-  /* White background for the popup. */
+  min-height: 60px;
+  max-height: 560px;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--pink-dim) transparent;
 }
 
-/* ── Container ───────────────────────────────────────────────────────────────
-   .container is the inner wrapper div. We use it to add padding without
-   affecting the body's width calculations. */
+body::-webkit-scrollbar               { width: 4px; }
+body::-webkit-scrollbar-track         { background: transparent; }
+body::-webkit-scrollbar-thumb         { background: var(--pink-dim); border-radius: 2px; }
+body::-webkit-scrollbar-thumb:hover   { background: var(--pink-glow); }
+
+/* ── Neon top bar ──────────────────────────────────────────────────────────── */
+.neon-bar {
+  height: 2px;
+  background: linear-gradient(90deg, var(--pink) 0%, var(--orange) 100%);
+  box-shadow: 0 0 8px 1px var(--pink-glow);
+}
+
+/* ── Container ─────────────────────────────────────────────────────────────── */
 .container {
-  padding: 16px 20px;
-  /* Shorthand: 16px top/bottom, 20px left/right.
-     This creates breathing room between the popup edge and the content. */
+  padding: 16px 16px 12px;
 }
 
-/* ── Title ───────────────────────────────────────────────────────────────────
-   Styles the <h1> heading. */
+/* ── Title ─────────────────────────────────────────────────────────────────── */
 .title {
-  font-size: 18px;      /* slightly larger than body text to establish hierarchy */
-  font-weight: 700;     /* bold — 700 is the standard bold weight */
-  color: #0f3460;       /* deep blue, distinct from body text */
-  margin-bottom: 4px;   /* small gap between title and subtitle */
-  letter-spacing: -0.3px; /* tighten letter spacing slightly for large bold text */
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  background: linear-gradient(90deg, var(--pink) 0%, var(--orange) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 14px;
 }
 
-/* ── Version Badge ───────────────────────────────────────────────────────────
-   Styles the <span class="version"> inside the heading. */
 .version {
-  font-size: 11px;      /* much smaller than the heading text */
-  font-weight: 500;     /* medium weight — lighter than the bold heading */
-  color: #6b7280;       /* muted grey — de-emphasised, secondary info */
-  vertical-align: middle; /* aligns the small span to the middle of the heading text */
-  margin-left: 6px;     /* space between "Session Launcher" and "v0.1" */
-}
-
-/* ── Primary Button ──────────────────────────────────────────────────────────
-   The "Show Current Setup" button. */
-.btn-primary {
-  display: block;
-  /* display:block makes the button take the full width of its parent (.container),
-     not just hug its text content like the default inline-block would. */
-
-  width: 100%;
-  /* Combined with display:block, this stretches the button edge-to-edge
-     inside the .container padding. */
-
-  margin-top: 14px;
-  /* Space between the heading and the button. */
-
-  padding: 10px 0;
-  /* 10px top/bottom breathing room inside the button. 0 left/right because
-     the button is already full-width so horizontal padding would be wasted. */
-
-  background-color: #0f3460;
-  /* Deep blue — matches the heading color, creating visual unity. */
-
-  color: #ffffff;
-  /* White text on dark background for contrast. */
-
-  font-size: 13px;      /* slightly smaller than body text — buttons usually are */
-  font-weight: 600;     /* semi-bold — stands out without being heavy */
-  letter-spacing: 0.3px; /* tiny positive tracking makes all-caps-ish feel intentional */
-
-  border: none;
-  /* Remove the default browser border that all buttons have.
-     We'll rely on background-color and padding for the button shape. */
-
-  border-radius: 6px;
-  /* Rounds the corners. 6px is subtly rounded — not pill-shaped, not sharp. */
-
-  cursor: pointer;
-  /* Changes the mouse cursor to a hand/pointer when hovering.
-     Browsers show the hand cursor on <a> links by default but NOT on <button>.
-     Setting this makes it clear the element is clickable. */
-
-  transition: background-color 0.15s ease, transform 0.1s ease;
-  /* CSS transitions animate changes to the listed properties.
-     "background-color 0.15s ease" — hover colour change takes 0.15s.
-     "transform 0.1s ease" — the press-down scale happens in 0.1s.
-     Without transition, state changes snap instantly, which feels cheap. */
-}
-
-.btn-primary:hover {
-  /* :hover is a CSS pseudo-class — it applies only when the mouse is over the element. */
-  background-color: #16213e;
-  /* Slightly darker blue on hover — gives tactile feedback that the button is interactive. */
-}
-
-.btn-primary:active {
-  /* :active applies while the mouse button is held down (during the click). */
-  transform: scale(0.97);
-  /* Shrinks the button to 97% of its size, simulating a physical press-down. */
-}
-
-.btn-primary:disabled {
-  /* :disabled applies when the button has the HTML `disabled` attribute set.
-     We set this in popup.js while the API queries are in flight (loading state). */
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
   opacity: 0.6;
-  /* Makes the button look greyed-out and inactive. */
-
-  cursor: not-allowed;
-  /* Changes cursor to a "no" symbol so the user knows they can't click right now. */
 }
 
-/* ── Hidden utility class ─────────────────────────────────────────────────────
-   A reusable class to hide any element. popup.js toggles this on/off. */
-.hidden {
-  display: none;
-  /* display:none removes the element from the layout entirely — it takes up no space.
-     This is different from visibility:hidden, which hides the element but
-     still reserves its space in the layout. */
-}
-
-/* ── Output Section ──────────────────────────────────────────────────────────
-   The block that appears below the button after clicking "Show Current Setup". */
-.output-section {
-  border-top: 1px solid #e5e7eb;
-  /* A subtle horizontal rule to visually separate the output from the button area.
-     1px solid — thin and clean. #e5e7eb is a light grey. */
-
-  max-height: 420px;
-  /* Limits how tall the output area can grow.
-     Without this, a browser with 50 tabs would make the popup enormous. */
-
-  display: flex;
-  /* display:flex turns this into a flex container.
-     Its children (output-header and output-pre) become "flex items".
-     By default flex lays children out in a row; we set flex-direction below. */
-
-  flex-direction: column;
-  /* Stack flex children vertically (column) instead of horizontally (row).
-     This puts output-header on top and output-pre below it. */
-
-  overflow: hidden;
-  /* Clips any overflow from children (like the <pre>) at this container's boundary. */
-}
-
-/* ── Output Header Bar ────────────────────────────────────────────────────────
-   The strip above the JSON block containing the label and Copy button. */
-.output-header {
-  display: flex;
-  /* Flex here puts "Current Setup" label and "Copy" button on the same line. */
-
-  justify-content: space-between;
-  /* Pushes the two children to opposite ends of the row:
-     label to the left, Copy button to the right. */
-
-  align-items: center;
-  /* Vertically centres both children within the header height. */
-
-  padding: 8px 14px;
-  /* Inner breathing room. */
-
-  background-color: #f9fafb;
-  /* Very light grey — distinguishes the header from the white popup background. */
-
-  border-bottom: 1px solid #e5e7eb;
-  /* A thin line separating the header from the JSON content below. */
-}
-
-.output-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;       /* muted grey — label, not content */
-  text-transform: uppercase;
-  /* ALL CAPS label style — a common UI pattern for section labels/metadata. */
-  letter-spacing: 0.6px; /* extra tracking looks good with uppercase */
-}
-
-/* ── Copy Button ─────────────────────────────────────────────────────────────
-   Small secondary button to copy JSON to clipboard. */
-.btn-copy {
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #374151;
-  background-color: #ffffff;
-  border: 1px solid #d1d5db;    /* subtle border defines the button without heavy colour */
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-}
-
-.btn-copy:hover {
-  background-color: #f3f4f6;    /* barely-there grey on hover */
-}
-
-.btn-copy.copied {
-  /* We add this class in popup.js for 1.5 seconds after copying.
-     It gives the user visual confirmation that the copy worked. */
-  color: #059669;               /* green text — "success" colour */
-  border-color: #6ee7b7;        /* green border to match */
-}
-
-/* ── Save Row ────────────────────────────────────────────────────────────────
-   The flex row containing the session name input and the Save button. */
+/* ── Save row ──────────────────────────────────────────────────────────────── */
 .save-row {
   display: flex;
-  /* Flex puts the input and button on the same line automatically.
-     Without flex, block elements would stack vertically and inline elements
-     would wrap unpredictably. Flex is the right tool for a "row of controls". */
-
   gap: 8px;
-  /* gap sets the space BETWEEN flex children (input and button).
-     It's cleaner than adding margin-right to the input because:
-     - gap applies only between items, never on the outside edges
-     - if the layout ever wraps to multiple rows, gap handles row spacing too */
-
-  margin-top: 14px;
-  /* Space between the heading and this row. */
+  align-items: center;
 }
 
-/* ── Session Name Input ───────────────────────────────────────────────────────
-   The text field where the user types the session name. */
+/* ── Session name input ────────────────────────────────────────────────────── */
 .session-name-input {
   flex: 1;
-  /* flex:1 tells this input to grow and fill ALL remaining horizontal space
-     in .save-row after the Save button takes its natural width.
-     Without this, the input would only be as wide as its default size. */
-
-  padding: 8px 10px;
-  /* Inner spacing: 8px top/bottom, 10px left/right — comfortable touch target. */
-
-  font-size: 13px;
-  /* Match the button font size so the row looks visually balanced. */
-
-  font-family: inherit;
-  /* <input> elements don't inherit font-family from body by default in all browsers.
-     "inherit" forces it to use the same system font stack we set on body. */
-
-  color: #1a1a2e;
-  /* Match the body text colour. */
-
-  background-color: #ffffff;
-  /* White fill — explicit so it's consistent across OS themes. */
-
-  border: 1px solid #d1d5db;
-  /* Subtle grey border to define the input boundary. */
-
-  border-radius: 6px;
-  /* Match the button's corner radius for visual consistency. */
-
+  height: 34px;
+  padding: 0 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
   outline: none;
-  /* Remove the default blue browser outline on focus.
-     We replace it with a custom box-shadow below (:focus rule). */
-
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  /* Smooth transition when the border colour changes on focus or error. */
+  transition: border-color 0.15s, box-shadow 0.15s;
+  caret-color: var(--pink);
 }
 
-.session-name-input:focus {
-  /* :focus applies when the input has keyboard focus (user is typing). */
-  border-color: #0f3460;
-  /* Change border to our brand blue on focus — standard "active field" signal. */
+.session-name-input::placeholder { color: var(--text-dim); }
 
-  box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.15);
-  /* box-shadow with spread:3px and colour:rgba(...0.15) creates a soft blue glow.
-     This is a common focus-ring technique that looks better than the default outline.
-     "0 0 0" means no x-offset, no y-offset, no blur — just a solid ring. */
+.session-name-input:focus {
+  border-color: var(--pink);
+  box-shadow: 0 0 0 2px var(--pink-dim), 0 0 8px 0 rgba(255, 0, 110, 0.25);
 }
 
 .session-name-input.input-error {
-  /* .input-error is added by popup.js when the user clicks Save with an empty field. */
-  border-color: #ef4444;
-  /* Red border — the universal "something is wrong here" signal. */
-
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
-  /* Red glow to match. rgba(239, 68, 68) is the same red as border, just transparent. */
+  border-color: var(--pink);
+  box-shadow: 0 0 0 2px var(--pink-dim);
+  animation: shake 0.28s ease-in-out;
 }
 
-/* ── Save Button ─────────────────────────────────────────────────────────────
-   The green "Save" button to the right of the input. */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-4px); }
+  75%       { transform: translateX( 4px); }
+}
+
+/* ── Save button ───────────────────────────────────────────────────────────── */
 .btn-save {
-  padding: 8px 16px;
-  /* Tighter horizontal than .btn-primary because this button is inline in a row,
-     not full-width. 16px left/right gives a comfortable click target. */
-
-  background-color: #059669;
-  /* Emerald green — visually distinct from the blue .btn-primary.
-     Green = "confirm / positive action" in most UI conventions. */
-
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 16px;
+  background: linear-gradient(90deg, var(--pink) 0%, var(--orange) 100%);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  white-space: nowrap;
-  /* white-space:nowrap prevents the button label from wrapping to two lines
-     if the popup is somehow narrower than expected. */
-
-  transition: background-color 0.15s ease, transform 0.1s ease;
-  /* Same hover/active transition pattern as .btn-primary. */
+  transition: opacity 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 10px 0 rgba(255, 0, 110, 0.35);
 }
 
-.btn-save:hover   { background-color: #047857; } /* darker green on hover */
-.btn-save:active  { transform: scale(0.97);     } /* press-down effect */
+.btn-save:hover:not(:disabled) {
+  opacity: 0.88;
+  box-shadow: 0 0 18px 2px rgba(255, 0, 110, 0.55);
+}
+
 .btn-save:disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: not-allowed;
-  /* Same disabled treatment as .btn-primary — greyed out, no click cursor. */
 }
 
-/* ── Sessions Section ────────────────────────────────────────────────────────
-   The always-visible block that shows the saved sessions list. */
+/* ── Sessions section ──────────────────────────────────────────────────────── */
 .sessions-section {
-  border-top: 1px solid #e5e7eb;
-  /* Thin separator line between the save controls and the sessions list.
-     Same visual language as .output-section's border-top. */
-
-  max-height: 260px;
-  /* Cap the height so a user with many sessions doesn't see a giant popup.
-     260px fits roughly 4–5 session rows before scrolling. */
-
-  display: flex;
-  flex-direction: column;
-  /* Stack sessions-header on top of sessions-list vertically. */
-
-  overflow: hidden;
-  /* Clip children at this container's boundary so the scrollbar appears
-     on .sessions-list (the inner element) rather than the whole popup. */
+  border-top: 1px solid var(--border);
 }
 
-/* ── Sessions Header ─────────────────────────────────────────────────────────
-   The label bar at the top of the sessions section. */
 .sessions-header {
   display: flex;
   align-items: center;
-  padding: 7px 14px;
-  background-color: #f9fafb; /* light grey, same as .output-header */
-  border-bottom: 1px solid #e5e7eb;
-  flex-shrink: 0;
-  /* flex-shrink:0 prevents the header from being squished if the list is tall.
-     By default flex items can shrink; we want the header to always be its full height. */
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--bg-card);
 }
 
 .sessions-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  /* Same style as .output-label — uppercase section heading, muted grey. */
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
 }
 
-/* ── Sessions List ───────────────────────────────────────────────────────────
-   The scrollable container that holds session rows or the empty state. */
+.sessions-count {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--pink);
+  background: var(--pink-dim);
+  border: 1px solid rgba(255, 0, 110, 0.3);
+  border-radius: 10px;
+  padding: 1px 7px;
+  min-width: 20px;
+  text-align: center;
+  display: none;
+}
+
+.sessions-count:not(:empty) {
+  display: inline-block;
+}
+
+/* ── Sessions list ─────────────────────────────────────────────────────────── */
 .sessions-list {
-  overflow-y: auto;
-  /* auto: show vertical scrollbar only when the content overflows.
-     The scrollbar appears here (inside the list) not on the whole popup. */
-
-  flex: 1;
-  /* Grow to fill remaining height inside .sessions-section after the header.
-     Combined with max-height on .sessions-section, this creates a scrollable pane. */
+  padding: 4px 0;
 }
 
-/* ── Session Row ─────────────────────────────────────────────────────────────
-   One saved session: [name + meta on the left] [Delete button on the right]. */
+/* ── Session row ───────────────────────────────────────────────────────────── */
 .session-row {
   display: flex;
-  /* Flexbox puts .session-info and .btn-delete on the same horizontal line. */
-
-  justify-content: space-between;
-  /* Push info to the left edge, Delete button to the right edge. */
-
   align-items: center;
-  /* Vertically centre both children in the row. */
-
-  padding: 9px 14px;
-  /* Breathing room inside the row. */
-
-  border-bottom: 1px solid #f3f4f6;
-  /* Very subtle divider between rows. #f3f4f6 is almost white — just enough
-     to separate rows without visual noise. */
-
-  transition: background-color 0.1s ease;
-  /* Smooth hover highlight. */
-}
-
-.session-row:last-child {
-  /* :last-child targets only the final row in the list. */
-  border-bottom: none;
-  /* Remove the divider on the last row so it doesn't double up with the
-     outer container's border. */
+  justify-content: space-between;
+  padding: 9px 16px;
+  border-left: 2px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
+  gap: 10px;
 }
 
 .session-row:hover {
-  background-color: #f9fafb;
-  /* Very light grey on hover — subtle "you can interact with this" hint. */
+  background: var(--bg-hover);
+  border-left-color: var(--pink);
 }
 
-/* ── Session Info ────────────────────────────────────────────────────────────
-   The left side of a session row: name stacked above metadata. */
+/* ── Session info (left column) ────────────────────────────────────────────── */
 .session-info {
   display: flex;
   flex-direction: column;
-  /* Stack name on top, meta text below. */
-
-  gap: 2px;
-  /* Small gap between name and meta lines. */
-
+  gap: 3px;
   min-width: 0;
-  /* A flex item's minimum size defaults to the size of its content.
-     If the session name is very long it would push the Delete button off screen.
-     min-width:0 allows the info block to shrink below its content size,
-     letting the text truncate via text-overflow (set on .session-name). */
+  flex: 1;
 }
 
-/* ── Session Name ────────────────────────────────────────────────────────────
-   The user-entered name displayed in bold on the top line of a row. */
 .session-name {
-  font-size: 13px;
-  font-weight: 600;    /* semi-bold so the name reads as the primary piece of info */
-  color: #111827;      /* near-black — highest contrast, most important text */
-
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* These three properties together implement text truncation:
-     white-space:nowrap   — don't wrap to a second line
-     overflow:hidden      — clip text that doesn't fit
-     text-overflow:ellipsis — show "…" at the cut-off point
-     A name like "Very Long Session Name That Exceeds The Width" becomes
-     "Very Long Session Name That…" */
+  letter-spacing: 0.03em;
 }
 
-/* ── Session Meta ────────────────────────────────────────────────────────────
-   The second line: "3 windows · 12 tabs · May 20" */
 .session-meta {
-  font-size: 11px;
-  color: #9ca3af;      /* light grey — secondary information, lower visual priority */
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
 }
 
-/* ── Delete Button ───────────────────────────────────────────────────────────
-   Small button on the right side of each session row. */
-.btn-delete {
-  flex-shrink: 0;
-  /* flex-shrink:0 prevents the Delete button from being squished when the
-     session name is long. The name truncates; the button stays full size. */
-
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #6b7280;           /* starts grey — not alarming until you hover */
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: color 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
-  /* Transition all three properties simultaneously for a smooth state change. */
-}
-
-.btn-delete:hover {
-  color: #dc2626;            /* red text on hover — "danger" signal */
-  border-color: #fca5a5;     /* light red border to match */
-  background-color: #fef2f2; /* very light red fill — reinforces the warning */
-}
-
-.btn-delete:active {
-  transform: scale(0.96);   /* slight press-down on click */
-}
-
-.btn-delete:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  /* Greyed out while the delete is in progress (async storage write). */
-}
-
-/* ── Empty State ─────────────────────────────────────────────────────────────
-   The placeholder paragraph shown when no sessions have been saved yet. */
-.sessions-empty {
-  padding: 16px 14px;
-  /* Generous padding so the message doesn't look squished in the list area. */
-
-  font-size: 12px;
-  color: #9ca3af;    /* light grey — this is hint text, not important content */
-  text-align: center;
-  /* Centre-aligned empty states feel less like broken UI and more intentional. */
-}
-
-/* ── Row Actions Group ────────────────────────────────────────────────────────
-   A flex wrapper that holds the Launch and Delete buttons side by side on the
-   right of each session row. Grouping them lets us treat them as one unit for
-   the row's space-between layout, so the info stays left and both buttons stay
-   right — no matter how many buttons we add in future phases. */
+/* ── Row action buttons ────────────────────────────────────────────────────── */
 .row-actions {
   display: flex;
-  /* Lays out Launch and Delete horizontally inside this group. */
-
   gap: 6px;
-  /* Space between the two buttons. */
-
   flex-shrink: 0;
-  /* Prevent this group from shrinking when session names are long.
-     The name truncates (text-overflow:ellipsis on .session-name);
-     the buttons always stay their full size. */
-
-  align-items: center;
-  /* Vertically centre both buttons relative to each other. */
 }
 
-/* ── Launch Button ────────────────────────────────────────────────────────────
-   The navy-blue button that restores a saved session. */
-.btn-launch {
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 600;      /* bolder than Delete so Launch is visually dominant */
-  color: #ffffff;        /* white text on a dark background */
-  background-color: #0f3460;  /* brand navy — same as .title colour */
-  border: 1px solid #0f3460;
-  border-radius: 4px;
+.btn-launch,
+.btn-delete {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  white-space: nowrap;   /* never wrap "Launch" to a second line */
-  transition: background-color 0.12s ease, transform 0.1s ease;
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s, opacity 0.12s;
 }
 
-.btn-launch:hover {
-  background-color: #16213e;  /* slightly darker navy on hover */
+.btn-launch {
+  background: transparent;
+  border: 1px solid rgba(255, 0, 110, 0.45);
+  color: var(--pink);
 }
 
-.btn-launch:active {
-  transform: scale(0.96);     /* subtle press-down effect */
-}
-
-.btn-launch:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  /* Greyed out while background.js is creating windows — prevents double-launch. */
+.btn-launch:hover:not(:disabled) {
+  background: var(--pink-dim);
+  border-color: var(--pink);
+  box-shadow: 0 0 8px 0 rgba(255, 0, 110, 0.4);
 }
 
 .btn-launch.launched {
-  /* Added by popup.js for 2 seconds after a successful launch. */
-  background-color: #059669;  /* green — matches the Save button "success" colour */
-  border-color: #059669;
+  background: rgba(0, 255, 120, 0.12);
+  border-color: rgba(0, 255, 120, 0.5);
+  color: #00ff78;
+  box-shadow: 0 0 8px 0 rgba(0, 255, 120, 0.3);
 }
 
-/* ── JSON Output Pre ──────────────────────────────────────────────────────────
-   The <pre> element that holds the formatted JSON string. */
-.output-pre {
-  margin: 0;
-  /* Reset any browser default margin — the <pre> element sometimes has default margin. */
+.btn-delete {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+}
 
-  padding: 12px 14px;
-  /* Inner spacing around the JSON text. */
+.btn-delete:hover:not(:disabled) {
+  border-color: rgba(255, 0, 110, 0.5);
+  color: var(--pink);
+  background: var(--pink-dim);
+}
 
-  font-family: "Cascadia Code", "Fira Code", "Consolas", "Menlo", monospace;
-  /* Monospace fonts for code/data output. These are ordered by preference:
-     "Cascadia Code" — VS Code's default monospace (Windows).
-     "Fira Code" — popular monospace with ligatures.
-     "Consolas" — built-in Windows monospace, very readable.
-     "Menlo" — macOS built-in monospace.
-     monospace — OS fallback if none of the above exist. */
+.btn-launch:disabled,
+.btn-delete:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 
+/* ── Empty state ───────────────────────────────────────────────────────────── */
+.sessions-empty {
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--text-dim);
   font-size: 11px;
-  /* Small font so more JSON fits without wrapping. */
-
+  letter-spacing: 0.04em;
   line-height: 1.6;
-  /* 1.6× the font size between lines — gives JSON blocks room to breathe. */
-
-  color: #1f2937;
-  /* Near-black — high contrast for readability against the white background. */
-
-  white-space: pre-wrap;
-  /* pre-wrap = preserve whitespace AND wrap long lines at the container edge.
-     Without wrapping, long URLs in JSON would overflow the popup horizontally.
-     Plain "pre" would not wrap; "pre-wrap" wraps while keeping intentional newlines. */
-
-  overflow-y: auto;
-  /* Adds a vertical scrollbar ONLY when the content is taller than the container.
-     "auto" means: no scrollbar when content fits, scrollbar when it overflows.
-     This lets the user scroll through long JSON without the popup becoming huge. */
-
-  flex: 1;
-  /* flex:1 is shorthand for flex-grow:1 flex-shrink:1 flex-basis:0.
-     Inside the flex-column output-section, this tells the <pre> to take up
-     all remaining vertical space after the header is sized.
-     Combined with max-height on .output-section, it creates a scrollable pane. */
 }
+
+/* ── Utility ───────────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
